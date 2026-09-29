@@ -51,66 +51,66 @@ export const HomePage: React.FC<Props> = ({
       <InteractiveBackground isDark={isDark} />
       <InteractiveCursor />
 
-      {/* Floating Modern Header inspired by Reference Image (Dark glass capsule + Deploy Button) */}
+      {/* Floating Modern Header (Light Mode Frosted Glass / Dark Mode Obsidian Capsule) */}
       <div className="sticky top-4 z-40 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full transition-all">
         <div className="flex items-center justify-between gap-3">
           {/* Logo Capsule */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-950/85 dark:bg-black/85 backdrop-blur-xl border border-white/10 shadow-xl text-white shrink-0">
-            <AvalonLogo size="sm" lightText={true} />
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 dark:bg-black/85 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-xl text-slate-900 dark:text-white shrink-0 transition-colors">
+            <AvalonLogo size="sm" lightText={isDark} />
           </div>
 
-          {/* Center Navigation Capsule directly matching Reference Image */}
-          <nav className="hidden lg:flex items-center gap-7 px-7 py-2.5 rounded-full bg-slate-950/85 dark:bg-black/85 backdrop-blur-xl border border-white/10 shadow-2xl text-[13px] font-medium text-slate-300">
-            <a href="#tour" className="hover:text-white transition-colors flex items-center gap-1">
+          {/* Center Navigation Capsule */}
+          <nav className="hidden lg:flex items-center gap-7 px-7 py-2.5 rounded-full bg-white/90 dark:bg-black/85 backdrop-blur-xl border border-slate-200/90 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-2xl text-[13px] font-medium text-slate-600 dark:text-slate-300 transition-colors">
+            <a href="#tour" className="hover:text-slate-950 dark:hover:text-white transition-colors flex items-center gap-1">
               <span>Solutions</span>
-              <span className="text-slate-500 font-light text-[14px]">+</span>
+              <span className="text-slate-400 dark:text-slate-500 font-light text-[14px]">+</span>
             </a>
-            <a href="#tour" className="hover:text-white transition-colors">
+            <a href="#tour" className="hover:text-slate-950 dark:hover:text-white transition-colors">
               Capabilities
             </a>
-            <a href="#architecture" className="hover:text-white transition-colors flex items-center gap-1">
+            <a href="#architecture" className="hover:text-slate-950 dark:hover:text-white transition-colors flex items-center gap-1">
               <span>Architecture</span>
-              <span className="text-slate-500 font-light text-[14px]">+</span>
+              <span className="text-slate-400 dark:text-slate-500 font-light text-[14px]">+</span>
             </a>
-            <a href="#architecture" className="hover:text-white transition-colors">
+            <a href="#architecture" className="hover:text-slate-950 dark:hover:text-white transition-colors">
               Security
             </a>
             <button
               onClick={onNavigateToContact}
-              className="hover:text-white transition-colors text-left flex items-center gap-1"
+              className="hover:text-slate-950 dark:hover:text-white transition-colors text-left flex items-center gap-1 cursor-pointer"
             >
               <span>Company</span>
-              <span className="text-slate-500 font-light text-[14px]">+</span>
+              <span className="text-slate-400 dark:text-slate-500 font-light text-[14px]">+</span>
             </button>
             <button
               onClick={onNavigateToContact}
-              className="hover:text-white transition-colors text-left"
+              className="hover:text-slate-950 dark:hover:text-white transition-colors text-left cursor-pointer"
             >
               Contact
             </button>
           </nav>
 
-          {/* Right Action Buttons with matching standalone pill */}
+          {/* Right Action Buttons */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onToggleTheme}
-              className="p-2.5 rounded-full bg-slate-950/85 dark:bg-black/85 border border-white/10 backdrop-blur-xl text-slate-300 hover:text-white shadow-xl transition-colors"
+              className="p-2.5 rounded-full bg-white/90 dark:bg-black/85 border border-slate-200/90 dark:border-white/10 backdrop-blur-xl text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white shadow-md dark:shadow-xl transition-colors cursor-pointer"
               title="Toggle Light / Dark mode"
             >
-              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600 hover:text-indigo-600" />}
             </button>
 
             <button
               onClick={onNavigateToLogin}
-              className="hidden sm:inline-flex px-4 py-2 rounded-full bg-slate-950/85 dark:bg-black/85 border border-white/10 backdrop-blur-xl text-[13px] font-medium text-slate-200 hover:text-white shadow-xl transition-colors"
+              className="hidden sm:inline-flex px-4 py-2 rounded-full bg-white/90 dark:bg-black/85 border border-slate-200/90 dark:border-white/10 backdrop-blur-xl text-[13px] font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shadow-md dark:shadow-xl transition-colors cursor-pointer"
             >
               Sign In
             </button>
 
-            {/* Deploy CTA matching image.png */}
+            {/* Launch Workspace CTA */}
             <button
               onClick={onNavigateToDashboard}
-              className="px-5 py-2.5 rounded-full bg-slate-950/90 dark:bg-white/10 hover:bg-slate-900 dark:hover:bg-white/20 border border-white/15 backdrop-blur-xl text-white font-medium text-[13px] flex items-center gap-1.5 shadow-xl transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 border border-indigo-600/30 dark:border-white/20 backdrop-blur-xl font-semibold text-[13px] flex items-center gap-1.5 shadow-md shadow-indigo-600/20 dark:shadow-white/10 transition-all cursor-pointer"
             >
               <span>Launch Workspace</span>
             </button>

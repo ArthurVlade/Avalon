@@ -71,8 +71,8 @@ export const InteractiveBackground: React.FC<Props> = ({ isDark }) => {
     };
     window.addEventListener('resize', handleResize);
 
-    // Continuous, active drifting star nodes initialized ONCE per theme change
-    const nodeCount = Math.min(Math.floor((width * height) / 25000), 65);
+    // Continuous, active drifting star nodes initialized ONCE per theme change (tastefully restrained frequency)
+    const nodeCount = Math.min(Math.floor((width * height) / 32000), 50);
     const nodes: StarNode[] = Array.from({ length: nodeCount }, (_, i) => {
       const angle = Math.random() * Math.PI * 2;
       const speed = 0.42 + Math.random() * 0.38; // Constant, lively perpetual drift speed
