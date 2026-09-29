@@ -1,0 +1,6 @@
+{
+  "name": "Avalon - Enterprise Work Management & Video Collaboration",
+  "description": "Complete Notion and Asana hybrid WorkOS with nested task hierarchies, hyperlinked video instructions, 6 custom database views, role-based workflows, and offline syncing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
