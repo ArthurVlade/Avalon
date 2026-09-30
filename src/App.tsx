@@ -91,8 +91,10 @@ export default function App() {
       if (hash.includes('signup')) return 'signup';
       if (hash.includes('contact')) return 'contact';
       if (hash.includes('login')) return 'login';
-      if (hash.includes('dashboard')) return 'dashboard';
-      if (isUserAuthenticated()) return 'dashboard';
+      if (hash.includes('dashboard')) {
+        if (isUserAuthenticated()) return 'dashboard';
+        return 'login';
+      }
     }
     return 'home';
   });
@@ -145,15 +147,17 @@ export default function App() {
   // ==========================================
   // MULTI-TENANT ISOLATION ARCHITECTURE
   // ==========================================
-  const currentUser = users.find((u) => u.id === currentUserId) || users[0];
-  const isSuperAdmin = currentUser.role === 'super_admin';
+  const currentUser: User | null = isUserAuthenticated()
+    ? users.find((u) => u.id === currentUserId) || null
+    : null;
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   // Determine current active organization
   const currentOrg: Organization = isSuperAdmin
     ? (selectedTenantOrgId === 'all'
         ? organizations[0] || INITIAL_ORGANIZATIONS[0]
-        : organizations.find((o) => o.id === selectedTenantOrgId) || organizations[0])
-    : (organizations.find((o) => o.id === currentUser.organizationId) || organizations[0]);
+        : organizations.find((o) => o.id === selectedTenantOrgId) || organizations[0] || INITIAL_ORGANIZATIONS[0])
+    : (organizations.find((o) => o.id === currentUser?.organizationId) || organizations[0] || INITIAL_ORGANIZATIONS[0]);
 
   // STRICT TENANT DATA ISOLATION (ZERO LEAKS)
   // Super admin can inspect all or filtered by tenant; regular org users ONLY see their org data
@@ -161,27 +165,35 @@ export default function App() {
     ? (selectedTenantOrgId === 'all'
         ? projects
         : projects.filter((p) => p.organizationId === selectedTenantOrgId))
-    : projects.filter((p) => p.organizationId === currentUser.organizationId);
+    : currentUser
+    ? projects.filter((p) => p.organizationId === currentUser.organizationId)
+    : [];
 
   const tenantTasks: Task[] = isSuperAdmin
     ? (selectedTenantOrgId === 'all'
         ? tasks
         : tasks.filter((t) => t.organizationId === selectedTenantOrgId))
-    : tasks.filter((t) => t.organizationId === currentUser.organizationId);
+    : currentUser
+    ? tasks.filter((t) => t.organizationId === currentUser.organizationId)
+    : [];
 
   const tenantUsers: User[] = isSuperAdmin
     ? (selectedTenantOrgId === 'all'
         ? users
         : users.filter((u) => u.organizationId === selectedTenantOrgId || u.role === 'super_admin'))
-    : users.filter((u) => u.organizationId === currentUser.organizationId);
+    : currentUser
+    ? users.filter((u) => u.organizationId === currentUser.organizationId)
+    : [];
 
   const tenantNotifications: NotificationItem[] = isSuperAdmin
     ? notifications
-    : notifications.filter(
+    : currentUser
+    ? notifications.filter(
         (n) =>
           n.organizationId === currentUser.organizationId &&
           (n.recipientId === currentUser.id || currentUser.role === 'admin')
-      );
+      )
+    : [];
 
   // Active project within tenant
   const currentProject: Project =
@@ -189,14 +201,21 @@ export default function App() {
     tenantProjects[0] ||
     projects[0];
 
-  // Sync hash routing
+  // Sync hash routing with authentication guard
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('signup')) setCurrentPage('signup');
       else if (hash.includes('contact')) setCurrentPage('contact');
       else if (hash.includes('login')) setCurrentPage('login');
-      else if (hash.includes('dashboard')) setCurrentPage('dashboard');
+      else if (hash.includes('dashboard')) {
+        if (isUserAuthenticated()) {
+          setCurrentPage('dashboard');
+        } else {
+          setCurrentPage('login');
+          window.location.hash = '#/login';
+        }
+      }
       else if (hash === '' || hash === '#/' || hash === '#home') setCurrentPage('home');
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -204,6 +223,11 @@ export default function App() {
   }, []);
 
   const navigateTo = (page: 'home' | 'login' | 'signup' | 'contact' | 'dashboard') => {
+    if (page === 'dashboard' && !isUserAuthenticated()) {
+      setCurrentPage('login');
+      window.location.hash = '#/login';
+      return;
+    }
     setCurrentPage(page);
     window.location.hash = page === 'home' ? '' : `#/${page}`;
   };
@@ -271,6 +295,9 @@ export default function App() {
     saveCurrentUserId(user.id);
     setAuthenticatedSession(true, user.id);
     showToast(`Signed in as ${user.name} (${user.role.replace('_', ' ')})`);
+    if (user.role === 'super_admin') {
+      setIsSuperAdminModalOpen(true);
+    }
     navigateTo('dashboard');
   };
 
@@ -302,12 +329,68 @@ export default function App() {
       setProjects(updatedProjects);
       saveProjects(updatedProjects);
       setActiveProjectId(defaultProj.id);
+
+      // Seed starter tasks so the freshly created organization workspace is immediately fully functional
+      const starterTasks: Task[] = [
+        {
+          id: `task_${Date.now()}_1`,
+          organizationId: newOrg.id,
+          projectId: defaultProj.id,
+          title: 'Welcome to your Avalon Workspace',
+          description: 'This is your primary project board. Invite team members, attach video revisions, and track deliverable sign-offs.',
+          status: 'backlog',
+          priority: 'high',
+          assigneeId: newUser.id,
+          creatorId: newUser.id,
+          dependencies: [],
+          dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+          tags: ['Onboarding', 'Workspace Setup'],
+          subtasks: [
+            { id: `sub_${Date.now()}_1`, parentId: `task_${Date.now()}_1`, title: 'Invite team members via the Team modal', completed: false },
+            { id: `sub_${Date.now()}_2`, parentId: `task_${Date.now()}_1`, title: 'Configure project stages & deliverables', completed: false },
+          ],
+          videoInstructions: [],
+          attachments: [],
+          comments: [],
+          requiresApproval: false,
+          approvalStatus: 'none',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `task_${Date.now()}_2`,
+          organizationId: newOrg.id,
+          projectId: defaultProj.id,
+          title: 'Review Initial Creative Assets & Video Directives',
+          description: 'Upload footage, paste screenshots from clipboard, or hyperlink frame-accurate timestamps (e.g. 0:00 - 0:15).',
+          status: 'in_progress',
+          priority: 'urgent',
+          assigneeId: newUser.id,
+          creatorId: newUser.id,
+          dependencies: [],
+          dueDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0],
+          tags: ['Production', 'Creative'],
+          subtasks: [
+            { id: `sub_${Date.now()}_3`, parentId: `task_${Date.now()}_2`, title: 'Verify audio stems and color grade LUTs', completed: false },
+          ],
+          videoInstructions: [],
+          attachments: [],
+          comments: [],
+          requiresApproval: true,
+          approvalStatus: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      const updatedTasks = [...tasks, ...starterTasks];
+      setTasks(updatedTasks);
+      saveTasks(updatedTasks);
     }
 
     setCurrentUserId(newUser.id);
     saveCurrentUserId(newUser.id);
     setAuthenticatedSession(true, newUser.id);
-    showToast(`Welcome to Avalon, ${newUser.name}!`);
+    showToast(`Welcome to Avalon, ${newUser.name}! Your ${newOrg ? 'workspace' : 'account'} is ready.`);
     navigateTo('dashboard');
   };
 
@@ -351,11 +434,11 @@ export default function App() {
         (type === 'task_completed'
           ? `Task Completed: ${task.title}`
           : `Sign-off Required: ${task.title}`),
-      message: `${currentUser.name} updated "${task.title}". View deliverable specs and video instructions.`,
+      message: `${currentUser?.name || 'A team member'} updated "${task.title}". View deliverable specs and video instructions.`,
       taskId: task.id,
       projectId: task.projectId,
       recipientId: stakeholder.id,
-      senderId: currentUser.id,
+      senderId: currentUser?.id || 'system',
       read: false,
       createdAt: new Date().toISOString(),
     }));
@@ -443,7 +526,7 @@ export default function App() {
       approvalStatus: 'approved',
       status: 'completed',
       approvalNotes: notes,
-      approvedBy: currentUser.id,
+      approvedBy: currentUser?.id || 'system',
       approvedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -513,7 +596,7 @@ export default function App() {
     if (activeCategory === 'project') {
       list = tenantTasks.filter((t) => t.projectId === currentProject?.id);
     } else if (activeCategory === 'my_tasks') {
-      list = tenantTasks.filter((t) => t.assigneeId === currentUser.id);
+      list = tenantTasks.filter((t) => t.assigneeId === currentUser?.id);
     } else if (activeCategory === 'approvals') {
       list = tenantTasks.filter((t) => t.requiresApproval);
     } else {
@@ -550,7 +633,7 @@ export default function App() {
   const pendingApprovalsCount = tenantTasks.filter(
     (t) => t.requiresApproval && t.approvalStatus === 'pending'
   ).length;
-  const myTasksCount = tenantTasks.filter((t) => t.assigneeId === currentUser.id && t.status !== 'completed').length;
+  const myTasksCount = tenantTasks.filter((t) => t.assigneeId === currentUser?.id && t.status !== 'completed').length;
 
   // ROUTE 1: Home Page
   if (currentPage === 'home') {
@@ -563,7 +646,6 @@ export default function App() {
         onNavigateToLogin={() => navigateTo('login')}
         onNavigateToSignUp={() => navigateTo('signup')}
         onNavigateToContact={() => navigateTo('contact')}
-        onNavigateToDashboard={() => navigateTo('dashboard')}
       />
     );
   }
@@ -571,29 +653,15 @@ export default function App() {
   // ROUTE 2: Login Page
   if (currentPage === 'login') {
     return (
-      <>
-        <LoginPage
-          users={users}
-          isDark={isDark}
-          onToggleTheme={() => setIsDark(!isDark)}
-          onLoginSuccess={handleLoginSuccess}
-          onNavigateToHome={() => navigateTo('home')}
-          onNavigateToSignUp={() => navigateTo('signup')}
-          onOpenSuperAdminConsole={() => setIsSuperAdminModalOpen(true)}
-        />
-
-        {isSuperAdminModalOpen && (
-          <SuperAdminControlModal
-            organizations={organizations}
-            users={users}
-            siteContent={siteContent}
-            onClose={() => setIsSuperAdminModalOpen(false)}
-            onUpdateOrganizations={handleUpdateOrganizations}
-            onUpdateUsers={handleUpdateUsers}
-            onUpdateSiteContent={handleUpdateSiteContent}
-          />
-        )}
-      </>
+      <LoginPage
+        users={users}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark(!isDark)}
+        onLoginSuccess={handleLoginSuccess}
+        onNavigateToHome={() => navigateTo('home')}
+        onNavigateToSignUp={() => navigateTo('signup')}
+        onUpdateUsers={handleUpdateUsers}
+      />
     );
   }
 
@@ -625,7 +693,21 @@ export default function App() {
     );
   }
 
-  // ROUTE 5: Dashboard Workspace Page
+  // ROUTE 5: Dashboard Workspace Page (STRICT AUTHENTICATION REQUIRED - NO BYPASS)
+  if (!currentUser || !isUserAuthenticated()) {
+    return (
+      <LoginPage
+        users={users}
+        isDark={isDark}
+        onToggleTheme={() => setIsDark(!isDark)}
+        onLoginSuccess={handleLoginSuccess}
+        onNavigateToHome={() => navigateTo('home')}
+        onNavigateToSignUp={() => navigateTo('signup')}
+        onUpdateUsers={handleUpdateUsers}
+      />
+    );
+  }
+
   return (
     <div className="relative h-screen flex flex-col bg-slate-100 dark:bg-[#07090e] text-[#0f172a] dark:text-[#f8fafc] font-sans selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-200 transition-colors overflow-hidden">
       {/* Interactive Canvas Mesh & Spotlight Aura */}
@@ -707,6 +789,7 @@ export default function App() {
           onAddNewProject={() => setIsNewProjectModalOpen(true)}
           onEditProject={(proj) => setEditingProject(proj)}
           onOpenOrgTeamModal={() => setIsOrgTeamModalOpen(true)}
+          onOpenSuperAdminModal={() => setIsSuperAdminModalOpen(true)}
         />
 
         {/* Workspace Canvas (Ergonomic slate field with elevated white cards) */}

@@ -30,7 +30,6 @@ interface Props {
   onNavigateToLogin: () => void;
   onNavigateToSignUp: () => void;
   onNavigateToContact: () => void;
-  onNavigateToDashboard: () => void;
 }
 
 export const HomePage: React.FC<Props> = ({
@@ -41,7 +40,6 @@ export const HomePage: React.FC<Props> = ({
   onNavigateToLogin,
   onNavigateToSignUp,
   onNavigateToContact,
-  onNavigateToDashboard,
 }) => {
   const [activeTourTab, setActiveTourTab] = useState<'video' | 'views' | 'approvals' | 'offline'>('video');
 
@@ -102,17 +100,18 @@ export const HomePage: React.FC<Props> = ({
 
             <button
               onClick={onNavigateToLogin}
-              className="hidden sm:inline-flex px-4 py-2 rounded-full bg-white/90 dark:bg-black/85 border border-slate-200/90 dark:border-white/10 backdrop-blur-xl text-[13px] font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shadow-md dark:shadow-xl transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-full bg-white/90 dark:bg-black/85 border border-slate-200/90 dark:border-white/10 backdrop-blur-xl text-[13px] font-medium text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shadow-md dark:shadow-xl transition-colors cursor-pointer"
             >
               Sign In
             </button>
 
-            {/* Launch Workspace CTA */}
+            {/* Get Started CTA */}
             <button
-              onClick={onNavigateToDashboard}
+              onClick={onNavigateToSignUp}
               className="px-5 py-2.5 rounded-full bg-indigo-600 hover:bg-indigo-700 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 border border-indigo-600/30 dark:border-white/20 backdrop-blur-xl font-semibold text-[13px] flex items-center gap-1.5 shadow-md shadow-indigo-600/20 dark:shadow-white/10 transition-all cursor-pointer"
             >
-              <span>Launch Workspace</span>
+              <span>Get Started</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -137,18 +136,18 @@ export const HomePage: React.FC<Props> = ({
         {/* Primary CTAs */}
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <button
-            onClick={onNavigateToDashboard}
-            className="w-full sm:w-auto px-7 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[14px] font-semibold hover:opacity-90 shadow-sm transition-all flex items-center justify-center gap-2 group"
+            onClick={onNavigateToSignUp}
+            className="w-full sm:w-auto px-7 py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[14px] font-semibold hover:opacity-90 shadow-sm transition-all flex items-center justify-center gap-2 group cursor-pointer"
           >
-            <span>Launch Workspace</span>
+            <span>Create Team Workspace</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
           </button>
 
           <button
-            onClick={onNavigateToSignUp}
-            className="w-full sm:w-auto px-7 py-3.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-full text-[14px] font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
+            onClick={onNavigateToLogin}
+            className="w-full sm:w-auto px-7 py-3.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 rounded-full text-[14px] font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
           >
-            Create Team Workspace
+            Sign In to Workspace
           </button>
         </div>
 
@@ -267,11 +266,11 @@ export const HomePage: React.FC<Props> = ({
                   </ul>
 
                   <button
-                    onClick={onNavigateToDashboard}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[13px] font-semibold hover:opacity-90 transition-opacity mt-2"
+                    onClick={onNavigateToSignUp}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[13px] font-semibold hover:opacity-90 transition-opacity mt-2 cursor-pointer"
                   >
-                    <span>Test Video Workflow in Dashboard</span>
-                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Create Free Workspace to Test Workflow</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 

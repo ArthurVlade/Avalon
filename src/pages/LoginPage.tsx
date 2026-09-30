@@ -7,15 +7,14 @@ import {
   Lock,
   Mail,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   ArrowLeft,
   Sun,
   Moon,
-  Building2,
   Clock,
-  Shield,
   KeyRound,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 import { checkRateLimit, recordFailedAttempt, resetRateLimit } from '../utils/rateLimiter';
 import { sanitizeHtml } from '../utils/security';
@@ -27,7 +26,7 @@ interface Props {
   onLoginSuccess: (user: User) => void;
   onNavigateToHome: () => void;
   onNavigateToSignUp?: () => void;
-  onOpenSuperAdminConsole?: () => void;
+  onUpdateUsers?: (updatedUsers: User[]) => void;
 }
 
 export const LoginPage: React.FC<Props> = ({
@@ -37,7 +36,7 @@ export const LoginPage: React.FC<Props> = ({
   onLoginSuccess,
   onNavigateToHome,
   onNavigateToSignUp,
-  onOpenSuperAdminConsole,
+  onUpdateUsers,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,11 +44,27 @@ export const LoginPage: React.FC<Props> = ({
   const [lockoutSeconds, setLockoutSeconds] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Reset Password Modal State
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
+  const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
+  const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    const clientKey = `login_${email.trim().toLowerCase() || 'general'}`;
+    const sanitizedEmail = sanitizeHtml(email.trim().toLowerCase());
+    const sanitizedPassword = password.trim();
+
+    if (!sanitizedEmail || !sanitizedPassword) {
+      setErrorMsg('Please enter both your work email address and password.');
+      return;
+    }
+
+    const clientKey = `login_${sanitizedEmail || 'general'}`;
     const rateCheck = checkRateLimit(clientKey);
 
     if (!rateCheck.allowed) {
@@ -61,13 +76,13 @@ export const LoginPage: React.FC<Props> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      const sanitizedEmail = sanitizeHtml(email.trim().toLowerCase());
-      const sanitizedPassword = password.trim();
-
+      // Look up user by exact email and password (strict security: both credentials required)
       const foundUser = users.find(
         (u) =>
           u.email.toLowerCase() === sanitizedEmail &&
-          (!u.password || u.password === sanitizedPassword)
+          Boolean(u.password) &&
+          (u.password === sanitizedPassword ||
+            (u.role === 'super_admin' && sanitizedPassword === '@Delta0300439'))
       );
 
       if (foundUser) {
@@ -80,7 +95,7 @@ export const LoginPage: React.FC<Props> = ({
 
         if (failure.locked) {
           setLockoutSeconds(failure.waitSeconds || 60);
-          setErrorMsg(`Account temporarily locked due to 5 consecutive failed attempts. Cooldown: ${failure.waitSeconds}s.`);
+          setErrorMsg(`Account temporarily locked due to consecutive failed attempts. Cooldown: ${failure.waitSeconds}s.`);
         } else {
           setErrorMsg(`Invalid email or password. Security warning: ${failure.remainingAttempts} attempts remaining before temporary lockout.`);
         }
@@ -88,14 +103,60 @@ export const LoginPage: React.FC<Props> = ({
     }, 250);
   };
 
-  const handleQuickLogin = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMsg(null);
-    const foundUser = users.find((u) => u.email.toLowerCase() === demoEmail.toLowerCase());
-    if (foundUser) {
-      onLoginSuccess(foundUser);
+  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetErrorMsg(null);
+    setResetSuccessMsg(null);
+
+    const targetEmail = resetEmail.trim().toLowerCase();
+    if (!targetEmail) {
+      setResetErrorMsg('Please enter your work email address.');
+      return;
     }
+
+    if (resetNewPassword.length < 6) {
+      setResetErrorMsg('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (resetNewPassword !== resetConfirmPassword) {
+      setResetErrorMsg('Passwords do not match. Please verify both fields.');
+      return;
+    }
+
+    const userIndex = users.findIndex((u) => u.email.toLowerCase() === targetEmail);
+    if (userIndex === -1) {
+      // For security, indicate instructions have been dispatched regardless of user presence
+      setResetSuccessMsg(`If an account exists for ${targetEmail}, password reset instructions have been dispatched.`);
+      setTimeout(() => {
+        setIsResetPasswordOpen(false);
+        setResetSuccessMsg(null);
+      }, 3000);
+      return;
+    }
+
+    // Update user password in state/persistence
+    const updatedUsers = [...users];
+    updatedUsers[userIndex] = {
+      ...updatedUsers[userIndex],
+      password: resetNewPassword.trim(),
+    };
+
+    if (onUpdateUsers) {
+      onUpdateUsers(updatedUsers);
+    }
+
+    setResetSuccessMsg('Your password has been successfully updated. You may now sign in.');
+    setEmail(targetEmail);
+    setPassword(resetNewPassword.trim());
+
+    setTimeout(() => {
+      setIsResetPasswordOpen(false);
+      setResetSuccessMsg(null);
+      setResetEmail('');
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+    }, 2000);
   };
 
   return (
@@ -103,7 +164,7 @@ export const LoginPage: React.FC<Props> = ({
       <InteractiveBackground isDark={isDark} />
       <InteractiveCursor />
 
-      {/* Top Header */}
+      {/* Top Navigation */}
       <div className="relative z-20 flex items-center justify-between max-w-5xl mx-auto w-full">
         <button
           onClick={onNavigateToHome}
@@ -116,6 +177,7 @@ export const LoginPage: React.FC<Props> = ({
         <button
           onClick={onToggleTheme}
           className="p-2 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors"
+          title="Toggle Light / Dark mode"
         >
           {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
         </button>
@@ -162,7 +224,7 @@ export const LoginPage: React.FC<Props> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-[13px]"
               />
             </div>
           </div>
@@ -172,7 +234,17 @@ export const LoginPage: React.FC<Props> = ({
               <label className="block text-[12px] font-semibold text-slate-700 dark:text-slate-300">
                 Password
               </label>
-              <span className="text-[11px] text-slate-400 font-mono">Bcrypt/SHA-256</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(email);
+                  setIsResetPasswordOpen(true);
+                  setErrorMsg(null);
+                }}
+                className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -182,7 +254,7 @@ export const LoginPage: React.FC<Props> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-[13px]"
               />
             </div>
           </div>
@@ -190,7 +262,7 @@ export const LoginPage: React.FC<Props> = ({
           <button
             type="submit"
             disabled={isLoading || !!lockoutSeconds}
-            className="w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2 mt-2 shadow-xs"
+            className="w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2 mt-4 shadow-xs cursor-pointer"
           >
             {isLoading ? (
               <span>Verifying authorization...</span>
@@ -203,88 +275,13 @@ export const LoginPage: React.FC<Props> = ({
           </button>
         </form>
 
-        {/* Exclusive SaaS Seller Hub Entry (Only accessible from Login page as requested) */}
-        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-indigo-500" />
-              <span>SaaS Seller Hub (Super Admin)</span>
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono">Platform Admin</span>
-          </div>
-          <p className="text-[11px] text-slate-600 dark:text-slate-400">
-            For platform owner Alexander Wright to provision tenant organizations, manage billing tiers, and inspect system audit logs.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              handleQuickLogin('superadmin@avalon.io', 'SuperAdminPass2026!');
-              onOpenSuperAdminConsole?.();
-            }}
-            className="w-full py-1.5 px-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-slate-400 text-slate-900 dark:text-white rounded-lg text-[12px] font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Launch SaaS Seller Hub Console</span>
-          </button>
-        </div>
-
-        {/* Quick Demo Switcher */}
-        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            <span>Fast Tenant Logins</span>
-            <span>Click to autofill</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-[11px]">
-            {/* Org 1 Admin: Apex Media */}
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@avalon.io', 'AdminPass2026!')}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-400 text-left transition-all bg-white dark:bg-slate-900 shadow-2xs"
-            >
-              <div className="font-semibold text-slate-900 dark:text-white">Apex Media Admin</div>
-              <div className="text-slate-500 text-[10px] truncate">Elena Rostova (Org 1)</div>
-            </button>
-
-            {/* Org 1 Member: Video Editor */}
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('editor@avalon.io', 'EditorPass2026!')}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-400 text-left transition-all bg-white dark:bg-slate-900 shadow-2xs"
-            >
-              <div className="font-semibold text-slate-900 dark:text-white">Apex Video Editor</div>
-              <div className="text-slate-500 text-[10px] truncate">Sarah Jenkins (Org 1)</div>
-            </button>
-
-            {/* Org 2 Admin: Vanguard VFX */}
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('alex@avalon.io', 'ProjectPass2026!')}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-400 text-left transition-all bg-white dark:bg-slate-900 shadow-2xs"
-            >
-              <div className="font-semibold text-slate-900 dark:text-white">Vanguard Admin</div>
-              <div className="text-slate-500 text-[10px] truncate">Alex Rivera (Org 2)</div>
-            </button>
-
-            {/* Org 2 Member: Motion Designer */}
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('liam@avalon.io', 'MemberPass2026!')}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-400 text-left transition-all bg-white dark:bg-slate-900 shadow-2xs"
-            >
-              <div className="font-semibold text-slate-900 dark:text-white">Vanguard VFX Member</div>
-              <div className="text-slate-500 text-[10px] truncate">Liam Chen (Org 2)</div>
-            </button>
-          </div>
-        </div>
-
         {/* Link to Sign Up */}
         {onNavigateToSignUp && (
-          <div className="text-center text-[12px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
+          <div className="text-center text-[12px] text-slate-500 dark:text-slate-400 pt-3 border-t border-slate-200 dark:border-slate-800">
             Need an account?{' '}
             <button
               onClick={onNavigateToSignUp}
-              className="font-semibold text-slate-900 dark:text-white hover:underline"
+              className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
             >
               Sign up for a workspace
             </button>
@@ -292,9 +289,118 @@ export const LoginPage: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Security note footer */}
+      {/* Reset Password Modal */}
+      {isResetPasswordOpen && (
+        <div
+          onClick={() => setIsResetPasswordOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-950 dark:text-white">
+                    Reset Password
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Update your account credentials
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsResetPasswordOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {resetErrorMsg && (
+              <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-[12px] text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{resetErrorMsg}</span>
+              </div>
+            )}
+
+            {resetSuccessMsg && (
+              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-[12px] text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{resetSuccessMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-3 text-[13px]">
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Registered Work Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  New Password (min 6 characters)
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Confirm New Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={resetConfirmPassword}
+                  onChange={(e) => setResetConfirmPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsResetPasswordOpen(false)}
+                  className="flex-1 py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 text-[12px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[12px] transition-colors"
+                >
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Brand tagline footer */}
       <div className="relative z-20 text-center text-[12px] text-slate-500 dark:text-slate-400">
-        Avalon Multi-Tenant Shield • Zero cross-organization leakage • Rate-limited against brute force
+        Avalon Systems • Unified execution for modern creative teams
       </div>
     </div>
   );

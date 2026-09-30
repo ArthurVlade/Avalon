@@ -3,6 +3,7 @@ import { Project, Workspace, User, Organization } from '../../types';
 import {
   CheckSquare,
   ShieldCheck,
+  Shield,
   BarChart3,
   Database,
   Plus,
@@ -33,6 +34,7 @@ interface Props {
   onAddNewProject: () => void;
   onEditProject?: (project: Project) => void;
   onOpenOrgTeamModal?: () => void;
+  onOpenSuperAdminModal?: () => void;
 }
 
 export const Sidebar: React.FC<Props> = ({
@@ -52,6 +54,7 @@ export const Sidebar: React.FC<Props> = ({
   onAddNewProject,
   onEditProject,
   onOpenOrgTeamModal,
+  onOpenSuperAdminModal,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -162,6 +165,18 @@ export const Sidebar: React.FC<Props> = ({
             >
               <Users className="w-3.5 h-3.5 shrink-0" />
               {!collapsed && <span>Team Members</span>}
+            </button>
+          )}
+
+          {/* Super Admin Dedicated Command Panel */}
+          {isSuperAdmin && onOpenSuperAdminModal && (
+            <button
+              onClick={onOpenSuperAdminModal}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[12px] text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors font-semibold border border-amber-200/80 dark:border-amber-800/40"
+              title="Super Admin Multi-Tenant Platform Hub"
+            >
+              <Shield className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+              {!collapsed && <span>Platform Root Hub</span>}
             </button>
           )}
         </div>
